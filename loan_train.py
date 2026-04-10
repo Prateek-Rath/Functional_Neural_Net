@@ -1,29 +1,6 @@
 import csv
-import math
 import time
-import random
-
-def relu(x):
-    return [max(0, v) for v in x]
-
-def softmax(x):
-    max_val = max(x)
-    exps = [math.exp(v - max_val) for v in x]
-    sum_exps = sum(exps) + 1e-9
-    return [v / sum_exps for v in exps]
-
-def matmul(A, B):
-    m, n = len(A), len(A[0])
-    p = len(B[0])
-    C = [[0] * p for _ in range(m)]
-    for i in range(m):
-        for j in range(p):
-            for k in range(n):
-                C[i][j] += A[i][k] * B[k][j]
-    return C
-
-def add_bias(A, b):
-    return [[rav + rbv for rav, rbv in zip(ra, b[0])] for ra in A]
+from neural_network import Model, Trainer
 
 # Label Encoders Matching OCaml
 def gender_map(s): return 0.0 if s == "female" else 1.0
@@ -42,7 +19,6 @@ def load_loan_data(filename, limit=10000):
         rows = []
         for i, row in enumerate(reader):
             if i >= limit: break
-            # Indices match OCaml parse_row
             age = float(row[0])
             gender = gender_map(row[1])
             edu = edu_map(row[2])
@@ -81,71 +57,32 @@ def load_loan_data(filename, limit=10000):
     
     return x, y
 
-def init_layer(fan_in, fan_out):
-    scale = 0.01
-    random.seed(42)
-    w = [[(random.random() * 2 - 1) * scale for _ in range(fan_out)] for _ in range(fan_in)]
-    b = [[0.0] * fan_out]
-    return {'w': w, 'b': b}
-
 if __name__ == "__main__":
-    print("--- Loan Data Training (Python) ---")
+    print("--- Modular Loan Data Training (Python) ---")
     limit = 10000
     x_data, y_data = load_loan_data("loan_data.csv", limit)
     print(f"Loaded {len(x_data)} samples.")
 
     # Architecture: 13 -> 16 -> 2
-    l1 = init_layer(13, 16)
-    l2 = init_layer(16, 2)
+    model = Model([13, 16, 2])
     
     lr = 0.1
     epochs = 20
     batch_size = 32
     
     t_start = time.time()
-    for epoch in range(epochs):
-        epoch_loss = 0
-        correct = 0
-        
-        # Mini-batch loop
-        for i in range(0, len(x_data), batch_size):
-            x_batch = x_data[i:i+batch_size]
-            y_batch = y_data[i:i+batch_size]
-            m_batch = len(x_batch)
-            
-            # Forward
-            z1 = add_bias(matmul(x_batch, l1['w']), l1['b'])
-            a1 = [[max(0, v) for v in row] for row in z1]
-            z2 = add_bias(matmul(a1, l2['w']), l2['b'])
-            a2 = [softmax(row) for row in z2]
-            
-            # Loss & Stats
-            for b_idx in range(m_batch):
-                epoch_loss -= math.log(a2[b_idx][y_batch[b_idx]] + 1e-9)
-                if a2[b_idx].index(max(a2[b_idx])) == y_batch[b_idx]:
-                    correct += 1
-            
-            # Backward
-            dz2 = [[(a2[b_idx][j] - (1 if j == y_batch[b_idx] else 0)) / m_batch for j in range(2)] for b_idx in range(m_batch)]
-            dw2 = matmul(list(map(list, zip(*a1))), dz2)
-            db2 = [[sum(dz2[b_idx][j] for b_idx in range(m_batch)) for j in range(2)]]
-            
-            da1 = matmul(dz2, list(map(list, zip(*l2['w']))))
-            dz1 = [[da1[b_idx][j] * (1 if z1[b_idx][j] > 0 else 0) for j in range(16)] for b_idx in range(m_batch)]
-            dw1 = matmul(list(map(list, zip(*x_batch))), dz1)
-            db1 = [[sum(dz1[b_idx][j] for b_idx in range(m_batch)) for j in range(16)]]
-            
-            # Update (Mini-batch step)
-            for j in range(len(l1['w'])):
-                for k in range(len(l1['w'][0])): l1['w'][j][k] -= lr * dw1[j][k]
-            for k in range(len(l1['b'][0])): l1['b'][0][k] -= lr * db1[0][k]
-            for j in range(len(l2['w'])):
-                for k in range(len(l2['w'][0])): l2['w'][j][k] -= lr * dw2[j][k]
-            for k in range(len(l2['b'][0])): l2['b'][0][k] -= lr * db2[0][k]
-
-        if (epoch + 1) % 5 == 0:
-            print(f"Epoch {epoch+1}, Loss: {epoch_loss/len(y_data):.4f}, Acc: {correct/len(y_data)*100:.2f}%")
-        
+    model = Trainer.train(model, x_data, y_data, epochs, batch_size, lr)
     t_end = time.time()
-    print(f"Final Accuracy: {correct/len(y_data)*100:.2f}%")
+    
+    # Calculate final accuracy on the same set for comparison
+    final_acts, _ = model.forward(x_data)
+    correct = 0
+    for i in range(len(y_data)):
+        pred = final_acts[-1][i].index(max(final_acts[-1][i]))
+        if pred == y_data[i]:
+            correct += 1
+    
+    accuracy = (correct / len(y_data)) * 100.0
+    print(f"Final Accuracy: {accuracy:.2f}%")
     print(f"Total time: {t_end - t_start:.4f} seconds")
+    print(f"RESULT: {accuracy:.2f}, {t_end - t_start:.4f}, {epochs}")

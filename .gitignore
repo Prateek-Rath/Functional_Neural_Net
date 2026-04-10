@@ -8,9 +8,11 @@
 loan_train
 financial_train
 verify
+*_bench
 
 # Large data files
 *.csv
+!results/benchmark_results.csv
 
 # Python caches
 __pycache__/

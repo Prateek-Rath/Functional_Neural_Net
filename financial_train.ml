@@ -27,3 +27,4 @@ let () =
   let acc = Train.accuracy trained_model x_data y_data in
   Printf.printf "Final Accuracy: %.2f%%\n" (acc *. 100.0);
   Printf.printf "Total Training Time: %.4f seconds\n" (t_end -. t_start);
+  Printf.printf "RESULT: %.2f, %.4f, %d\n" (acc *. 100.0) (t_end -. t_start) epochs;

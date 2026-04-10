@@ -1,0 +1,5 @@
+Dataset,Language,Accuracy (%),Time (s),Epochs
+Financial Data,OCaml,94.10,0.2861,20
+Financial Data,Python,94.50,0.2660,20
+Loan Data,OCaml,85.37,8.6586,20
+Loan Data,Python,85.31,6.9486,20
