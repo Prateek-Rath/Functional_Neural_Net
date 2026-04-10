@@ -1,0 +1,22 @@
+# Binaries and build artifacts
+*.cmo
+*.cmi
+*.cma
+*.cmxa
+*.o
+*.a
+loan_train
+financial_train
+verify
+
+# Large data files
+*.csv
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local config
+implementation_plan.md
+task.md
+walkthrough.md
